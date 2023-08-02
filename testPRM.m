@@ -1,3 +1,6 @@
+clearvars
+close all
+
 %%% Base obstacle Map
 obs_image = imread('/home/amrlab/Documents/will/maps/testmap3_obs.png');
 % image = imresize(image,0.01,'nearest');
@@ -9,8 +12,18 @@ obs_collision_map = binaryOccupancyMap(flipud(obs_bwimage),res);
 Npts=200;
 MaxConnectDist=150;
 
+startCrd=[20 20];
+goalCrd=[90 20];
+
+locs=[50 30; 40 25; 60 50];
+
 prm=ProbabilisticRoadMap(obs_collision_map,Npts)
+
+prm=prm.getPath(startCrd,goalCrd);
+
 figure
-prm.BinOccMap.show()
-hold on;
-prm.Graph.plot(XData=prm.Graph.Nodes.Pts(:,1),YData=prm.Graph.Nodes.Pts(:,2))
+prm.plot()
+
+prm=prm.rm_n_nearest_node_and_replan(locs,30);
+figure
+prm.plot()
