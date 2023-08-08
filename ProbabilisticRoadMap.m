@@ -20,20 +20,23 @@ classdef ProbabilisticRoadMap
     end
 
     methods
-        function obj = ProbabilisticRoadMap(BinOccMap,Npts,MaxConnectDist,edge_checker_pts,inflation_scale)
+        function obj = ProbabilisticRoadMap(BinOccMap,Npts,MaxConnectDist,inflation_scale,edge_checker_pts)
             %UNTITLED2 Construct an instance of this class
             %   Detailed explanation goes here
             arguments
                 BinOccMap binaryOccupancyMap = binaryOccupancyMap(zeros(100))%if no map provided, empty 100x100 map used at default scale
                 Npts {mustBeInteger(Npts),mustBeGreaterThanOrEqual(Npts,2)}= 2; %need at least two points to avoid jamming up or writing a lot of special case code
                 MaxConnectDist {mustBeNumeric,mustBeNonnegative}=50;
-                edge_checker_pts {mustBeInteger,mustBeNonnegative}= 2*ceil(norm(BinOccMap.GridSize)); %worst case line is along the diagonal; we want double the number of cells along this axis
+                
                 inflation_scale {mustBeNumeric,mustBeNonnegative} = 2;
+                edge_checker_pts {mustBeInteger,mustBeNonnegative}= 2*ceil(norm(BinOccMap.GridSize)); %worst case line is along the diagonal; we want double the number of cells along this axis
             end
             obj.BinOccMap=BinOccMap;
             obj.InflScale=inflation_scale;
             obj.InflOccMap=BinOccMap.copy();
-            obj.InflOccMap.inflate(obj.InflScale);
+            if obj.InflScale ~= 0
+                obj.InflOccMap.inflate(obj.InflScale);
+            end
 
             obj.Npts=Npts;
             obj.MaxConnectDist=MaxConnectDist;
@@ -101,7 +104,12 @@ classdef ProbabilisticRoadMap
         function obj=getPath(obj,startCrd,goalCrd)
             [~,start_mindex]=min(vecnorm(obj.Graph.Nodes.Pts-startCrd,2,2));
             [~,end_mindex]=min(vecnorm(obj.Graph.Nodes.Pts-goalCrd,2,2));
-            [nodes,dist]=obj.Graph.shortestpath(start_mindex,end_mindex);
+            if ~isempty(start_mindex) && ~isempty(end_mindex)
+                [nodes,dist]=obj.Graph.shortestpath(start_mindex,end_mindex);
+            else
+                nodes=[];
+                dist=inf;
+            end
             obj.startCrd=startCrd;
             obj.goalCrd=goalCrd;
             obj.path_crds=[obj.Graph.Nodes.Pts(nodes,:) ;goalCrd];
@@ -115,7 +123,7 @@ classdef ProbabilisticRoadMap
                 obj;
                 col_crds (:,2) {mustBeNumeric}; % crds of collisions
                 n {mustBeInteger} = 1;
-                
+
                 pose_crd (1,2) {mustBeNumeric}=obj.startCrd;
                 goal_crd (1,2) {mustBeNumeric}=obj.goalCrd;
                 
@@ -124,7 +132,8 @@ classdef ProbabilisticRoadMap
             Ds=[];
             Idxs=[];
             uids=[];
-            while length(uids)<n || isempty(uids)
+            m=min(n,size(obj.Graph.Nodes.Pts,1));
+            while length(uids)<m || isempty(uids)
                 for i=1:size(col_crds,1)
                     [ds,nearest_idxs]=mink(vecnorm(obj.Graph.Nodes.Pts-col_crds(i,:),2,2),n);
                     Ds=[Ds ds'];
@@ -137,7 +146,7 @@ classdef ProbabilisticRoadMap
            
             
             
-            obj.Graph=obj.Graph.rmnode(uids(1:n));
+            obj.Graph=obj.Graph.rmnode(uids(1:m));
             obj=obj.getPath(pose_crd,goal_crd);
             
         end

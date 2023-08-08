@@ -9,7 +9,7 @@ obs_bwimage = flipud(obs_grayimage < 1);
 res=1;
 obs_collision_map = binaryOccupancyMap(flipud(obs_bwimage),res);
 
-Npts=200;
+Npts=10;
 MaxConnectDist=150;
 
 startCrd=[20 20];
