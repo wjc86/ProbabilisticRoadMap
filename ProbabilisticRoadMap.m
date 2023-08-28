@@ -13,6 +13,7 @@ classdef ProbabilisticRoadMap
         path_crds
         path_nodes
         path_len
+        path_node_ct
 
         startCrd
         goalCrd
@@ -115,6 +116,7 @@ classdef ProbabilisticRoadMap
             obj.path_crds=[obj.Graph.Nodes.Pts(nodes,:) ;goalCrd];
             obj.path_nodes=nodes;
             obj.path_len=dist;
+            obj.path_node_ct=length(nodes);
 
         end
 
@@ -140,7 +142,7 @@ classdef ProbabilisticRoadMap
                     Idxs=[Idxs nearest_idxs'];
                 end
                 [d,ids]=mink(Ds,n);
-                Ids=Idxs(ids)
+                Ids=Idxs(ids);
                 uids=[uids unique(Ids)];
             end
            
@@ -150,14 +152,61 @@ classdef ProbabilisticRoadMap
             obj=obj.getPath(pose_crd,goal_crd);
             
         end
+
+        function obj=rm_n_nearest_path_node_and_replan(obj,col_crds,n,pose_crd,goal_crd)
+            arguments
+                obj;
+                col_crds (:,2) {mustBeNumeric}; % crds of collisions
+                n {mustBeInteger} = 1;
+
+                pose_crd (1,2) {mustBeNumeric}=obj.startCrd;
+                goal_crd (1,2) {mustBeNumeric}=obj.goalCrd;
+                
+
+            end
+
+            %need this additional validator since object attr can't be used
+            %in arguments block
+
+            if n>length(obj.path_nodes)
+                warning("Asked to remove %d nodes, but path only has %d nodes.\nRemoving %d nodes.",n,length(obj.path_nodes),length(obj.path_nodes))
+                n=length(obj.path_nodes);
+            end
+
+            Ds=[];
+            Idxs=[];
+            uids=[];
+                %can add case for n=path len, since we'd toss all of them.
+            while length(uids)<n || isempty(uids)
+                for i=1:size(col_crds,1)
+                    [ds,nearest_idxs]=mink(vecnorm(obj.path_crds-col_crds(i,:),2,2),n);
+                    Ds=[Ds ds'];
+                    Idxs=[Idxs nearest_idxs'];
+                end
+                [d,ids]=mink(Ds,n);
+                Ids=Idxs(ids);
+                uids=[uids unique(Ids)];
+            end
+           
+            
+            
+            obj.Graph=obj.Graph.rmnode(uids(1:n));
+            obj=obj.getPath(pose_crd,goal_crd);
+            
+        end
+        
+
+
         function plot(obj)
             fig=gcf();
             ax=gca();
             hold on
             obj.BinOccMap.show();
             hold on;
-            obj.Graph.plot(XData=obj.Graph.Nodes.Pts(:,1),YData=obj.Graph.Nodes.Pts(:,2));
-            plot([obj.path_crds(:,1)],[obj.path_crds(:,2)],'r-o')
+            obj.Graph.plot(XData=obj.Graph.Nodes.Pts(:,1),YData=obj.Graph.Nodes.Pts(:,2),EdgeColor=[170,130,50]/255);
+            if ~isempty(obj.path_crds)
+                plot([obj.path_crds(:,1)],[obj.path_crds(:,2)],'r-o')
+            end
         end
 
         function nobj=clone(obj)
