@@ -120,38 +120,38 @@ classdef ProbabilisticRoadMap
 
         end
 
-        function obj=rm_n_nearest_node_and_replan(obj,col_crds,n,pose_crd,goal_crd)
-            arguments
-                obj;
-                col_crds (:,2) {mustBeNumeric}; % crds of collisions
-                n {mustBeInteger} = 1;
-
-                pose_crd (1,2) {mustBeNumeric}=obj.startCrd;
-                goal_crd (1,2) {mustBeNumeric}=obj.goalCrd;
-                
-
-            end
-            Ds=[];
-            Idxs=[];
-            uids=[];
-            m=min(n,size(obj.Graph.Nodes.Pts,1));
-            while length(uids)<m || isempty(uids)
-                for i=1:size(col_crds,1)
-                    [ds,nearest_idxs]=mink(vecnorm(obj.Graph.Nodes.Pts-col_crds(i,:),2,2),n);
-                    Ds=[Ds ds'];
-                    Idxs=[Idxs nearest_idxs'];
-                end
-                [d,ids]=mink(Ds,n);
-                Ids=Idxs(ids);
-                uids=[uids unique(Ids)];
-            end
-           
-            
-            
-            obj.Graph=obj.Graph.rmnode(uids(1:m));
-            obj=obj.getPath(pose_crd,goal_crd);
-            
-        end
+        % function obj=rm_n_nearest_node_and_replan(obj,col_crds,n,pose_crd,goal_crd)
+        %     arguments
+        %         obj;
+        %         col_crds (:,2) {mustBeNumeric}; % crds of collisions
+        %         n {mustBeInteger} = 1;
+        % 
+        %         pose_crd (1,2) {mustBeNumeric}=obj.startCrd;
+        %         goal_crd (1,2) {mustBeNumeric}=obj.goalCrd;
+        % 
+        % 
+        %     end
+        %     Ds=[];
+        %     Idxs=[];
+        %     uids=[];
+        %     m=min(n,size(obj.Graph.Nodes.Pts,1));
+        %     while length(uids)<m || isempty(uids)
+        %         for i=1:size(col_crds,1)
+        %             [ds,nearest_idxs]=mink(vecnorm(obj.Graph.Nodes.Pts-col_crds(i,:),2,2),n);
+        %             Ds=[Ds ds'];
+        %             Idxs=[Idxs nearest_idxs'];
+        %         end
+        %         [d,ids]=mink(Ds,m);
+        %         Ids=Idxs(ids);
+        %         uids=[uids unique(Ids)];
+        %     end
+        % 
+        % 
+        % 
+        %     obj.Graph=obj.Graph.rmnode(uids(1:m));
+        %     obj=obj.getPath(pose_crd,goal_crd);
+        % 
+        % end
 
         function obj=rm_n_nearest_path_node_and_replan(obj,col_crds,n,pose_crd,goal_crd)
             arguments
@@ -171,27 +171,23 @@ classdef ProbabilisticRoadMap
             if n>length(obj.path_nodes)
                 warning("Asked to remove %d nodes, but path only has %d nodes.\nRemoving %d nodes.",n,length(obj.path_nodes),length(obj.path_nodes))
                 n=length(obj.path_nodes);
+
             end
 
-            Ds=[];
-            Idxs=[];
-            uids=[];
-                %can add case for n=path len, since we'd toss all of them.
-            while length(uids)<n || isempty(uids)
-                for i=1:size(col_crds,1)
-                    [ds,nearest_idxs]=mink(vecnorm(obj.path_crds-col_crds(i,:),2,2),n);
-                    Ds=[Ds ds'];
-                    Idxs=[Idxs nearest_idxs'];
+            if n==length(obj.path_nodes)
+                uids=obj.path_nodes;
+            else
+                uids=[];
+                Ds=zeros(size(obj.path_nodes));
+                for i=1:size(obj.path_crds,1)
+                    Ds(i)=min(vecnorm(obj.path_crds(i,:)-col_crds,2,2));   
                 end
-                [d,ids]=mink(Ds,n);
-                Ids=Idxs(ids);
-                uids=[uids unique(Ids)];
+                [~,ids]=mink(Ds,n);
+                uids=obj.path_nodes(ids);
             end
-           
-            
-            
-            obj.Graph=obj.Graph.rmnode(uids(1:n));
-            obj=obj.getPath(pose_crd,goal_crd);
+ 
+            obj.Graph=obj.Graph.rmnode(uids);
+            obj=obj.getPath(pose_crd,goal_crd); % this resets the path using the stored values; call getpath again with fresh values if needed
             
         end
         
