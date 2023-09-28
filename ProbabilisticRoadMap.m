@@ -17,11 +17,13 @@ classdef ProbabilisticRoadMap
 
         startCrd
         goalCrd
+
+        allow_collided_points
        
     end
 
     methods
-        function obj = ProbabilisticRoadMap(BinOccMap,Npts,MaxConnectDist,inflation_scale,edge_checker_pts)
+        function obj = ProbabilisticRoadMap(BinOccMap,Npts,MaxConnectDist,inflation_scale,edge_checker_pts,allow_col_pts)
             %UNTITLED2 Construct an instance of this class
             %   Detailed explanation goes here
             arguments
@@ -31,6 +33,7 @@ classdef ProbabilisticRoadMap
                 
                 inflation_scale {mustBeNumeric,mustBeNonnegative} = 2;
                 edge_checker_pts {mustBeInteger,mustBeNonnegative}= 2*ceil(norm(BinOccMap.GridSize)); %worst case line is along the diagonal; we want double the number of cells along this axis
+                allow_col_pts {mustBeNumericOrLogical} = false;
             end
             obj.BinOccMap=BinOccMap;
             obj.InflScale=inflation_scale;
@@ -42,7 +45,7 @@ classdef ProbabilisticRoadMap
             obj.Npts=Npts;
             obj.MaxConnectDist=MaxConnectDist;
             obj.edge_checker_pts=edge_checker_pts;
-            
+            obj.allow_collided_points=allow_col_pts;
             obj=obj.setGraph();
         end
 
@@ -58,9 +61,14 @@ classdef ProbabilisticRoadMap
                 x=obj.BinOccMap.XWorldLimits(1)+(obj.BinOccMap.XWorldLimits(2)-obj.BinOccMap.XWorldLimits(1))*rand(obj.Npts,1);
                 y=obj.BinOccMap.YWorldLimits(1)+(obj.BinOccMap.YWorldLimits(2)-obj.BinOccMap.YWorldLimits(1))*rand(obj.Npts,1);
                 samps=[x y];
-                Pts=[Pts;samps(obj.InflOccMap.checkOccupancy(samps)==0,:)];%reject points in obstacles (or out of bounds, though that shouldn't happen w/ rectangular maps)
+                if obj.allow_collided_points==false
+                    Pts=[Pts;samps(obj.InflOccMap.checkOccupancy(samps)==0,:)];%reject points in obstacles (or out of bounds, though that shouldn't happen w/ rectangular maps)
+                else
+                    Pts=[Pts;samps];
+                end
                 tries=tries+1;
             end
+
             Pts=Pts(1:obj.Npts,:); %delete excess pts
             
             %now we have a full field of valid points; we need to connect
@@ -199,9 +207,9 @@ classdef ProbabilisticRoadMap
             hold on
             obj.BinOccMap.show();
             hold on;
-            obj.Graph.plot(XData=obj.Graph.Nodes.Pts(:,1),YData=obj.Graph.Nodes.Pts(:,2),EdgeColor=[170,130,50]/255);
+            obj.Graph.plot(XData=obj.Graph.Nodes.Pts(:,1),YData=obj.Graph.Nodes.Pts(:,2),EdgeColor=[170,130,50]/255,EdgeAlpha=0.025);
             if ~isempty(obj.path_crds)
-                plot([obj.path_crds(:,1)],[obj.path_crds(:,2)],'r-o')
+                plot([obj.path_crds(:,1)],[obj.path_crds(:,2)],'-o','MarkerFaceColor',[194 63 118]/255,'LineWidth',5,'MarkerSize',10,'Color',[194 63 118]/255)
             end
         end
 
